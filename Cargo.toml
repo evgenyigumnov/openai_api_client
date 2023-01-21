@@ -9,6 +9,7 @@ license-file = "LICENSE"
 keywords = ["chatgpt", "openai", "api"]
 categories = ["library"]
 readme = "README.md"
+description = "OpenAI API client for Rust"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
