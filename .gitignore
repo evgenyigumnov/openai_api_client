@@ -1,9 +1,9 @@
-.idea/.gitignore
-.idea/codeStyles\codeStyleConfig.xml
-.idea/codeStyles\Project.xml
-.idea/misc.xml
-.idea/modules.xml
-.idea/sbt.xml
-.idea/vcs.xml
-.idea/workspace.xml
+./.idea/.gitignore
+./.idea/codeStyles\codeStyleConfig.xml
+./.idea/codeStyles\Project.xml
+./.idea/misc.xml
+./.idea/modules.xml
+./.idea/sbt.xml
+./.idea/vcs.xml
+./.idea/workspace.xml
 openai_api_client.iml
