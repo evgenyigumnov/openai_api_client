@@ -2,6 +2,9 @@
 
 ```rust
 
+use openai_api_client::*;
+
+
 #[actix_rt::main]
 async fn main() {
     let api_key = "............";
