@@ -22,8 +22,8 @@ async fn main() {
     let max_tokens:u32 = 3;
     let prompt = "Is Biden president of USA?  If you ask yes or not. \
      I say:";
-    let result = completions_pretty(prompt, model, max_tokens, &api_key).await;
-    println!("result: {:?}", result);
+    let result: String = completions_pretty(prompt, model, max_tokens, &api_key).await;
+    println!("result: {}", result);
     
     // hardcore usage
     let params = CompletionsParams {
