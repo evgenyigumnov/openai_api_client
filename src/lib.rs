@@ -29,7 +29,7 @@ pub async fn completions(prompt: &str, params: &CompletionsParams, api_key: &str
 
 
     let request_string = serde_json::to_string(&request).unwrap();
-    println!("{}", request_string);
+    // println!("{}", request_string);
     let mut resp = client.post("https://api.openai.com/v1/completions")
         .insert_header(("Content-Type", "application/json"))
         .insert_header(("Authorization", format!("Bearer {}", api_key)))
