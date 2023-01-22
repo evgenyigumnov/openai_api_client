@@ -65,8 +65,8 @@ pub async fn completions_pretty(prompt: &str, model: &str, max_tokens: u32, api_
         logprobs: None,
         echo: false,
         best_of: 1,
-        logit_bias: HashMap::new(),
-        user: "".to_string(),
+        logit_bias: None,
+        user: None,
     };
 
     let res = completions(prompt, &params, api_key).await;
@@ -112,19 +112,11 @@ pub struct Params {
     pub logprobs: Option<u32>,
     pub echo: bool,
     pub best_of: u32,
-    pub logit_bias: HashMap<String, i32>,
-    pub user: String,
+    pub logit_bias: Option<HashMap<String, i32>>,
+    pub user: Option<String>,
 }
 
-fn serialize_option_as_null<S,E:Serialize>(value: &Option<E>, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-{
-    match value {
-        Some(v) => serializer.serialize_some(v),
-        None => serializer.serialize_unit(),
-    }
-}
+
 
 #[derive(Deserialize, Serialize, Debug)]
 pub struct Response {
@@ -161,18 +153,20 @@ pub struct Request {
     pub top_p: f32,
     pub frequency_penalty: f32,
     pub presence_penalty: f32,
-    #[serde(serialize_with = "serialize_option_as_null")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub stop: Option<Vec<String>>,
-    #[serde(serialize_with = "serialize_option_as_null")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub suffix: Option<String>,
     pub n: u32,
     pub stream: bool,
-    #[serde(serialize_with = "serialize_option_as_null")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub logprobs: Option<u32>,
     pub echo: bool,
     pub best_of: u32,
-    pub logit_bias: HashMap<String, i32>,
-    pub user: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub logit_bias: Option<HashMap<String, i32>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub user: Option<String>,
 }
 
 #[cfg(test)]
@@ -200,8 +194,8 @@ mod tests {
             logprobs: None,
             echo: false,
             best_of: 1,
-            logit_bias: HashMap::new(),
-            user: "".to_string(),
+            logit_bias: None,
+            user: None,
         };
 
 

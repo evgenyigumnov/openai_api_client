@@ -24,15 +24,24 @@ async fn main() {
     
     // hardcore usage
     let params = Params {
-        model: "text-davinci-003".to_string(),
+        model: model.to_string(),
         temperature: 0,
-        max_tokens: 3,
+        max_tokens: max_tokens,
         top_p: 1.0,
         frequency_penalty: 0.0,
         presence_penalty: 0.0,
-        stop: vec!["\"\"\"".to_string()],
+        stop: None,
+        suffix: None,
+        n: 1,
+        stream: false,
+        logprobs: None,
+        echo: false,
+        best_of: 1,
+        logit_bias: None,
+        user: None,
     };
-    let result_hard = completions("Is Biden president of Canada?  If you ask yes or not. I say:", &params, &api_key).await;
+    let new_promt = "Is Biden president of Canada?  If you ask yes or not. I say:";
+    let result_hard = completions(new_promt, &params, &api_key).await;
     println!("result: {}", result_hard.unwrap().choices[0].text);
 
 }
