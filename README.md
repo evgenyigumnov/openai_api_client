@@ -14,11 +14,15 @@ use openai_api_client::*;
 
 #[actix_rt::main]
 async fn main() {
+    // pretty usage
     let api_key = "............";
     let model = "text-davinci-003";
     let max_tokens:u32 = 3;
-    let result = completions_pretty("Is Biden president of USA?  If you ask yes or not. I say:", model, max_tokens, &api_key).await;
+    let prompt = "Is Biden president of USA?  If you ask yes or not. I say:";
+    let result = completions_pretty(prompt, model, max_tokens, &api_key).await;
     println!("result: {:?}", result);
+    
+    // hardcore usage
     let params = Params {
         model: "text-davinci-003".to_string(),
         temperature: 0,
