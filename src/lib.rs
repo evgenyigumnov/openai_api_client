@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::io::Error;
 use awc::Client;
 use serde::Deserialize;
@@ -16,17 +17,28 @@ pub async fn completions(prompt: &str, params: &Params, api_key: &str) -> std::i
         frequency_penalty: params.frequency_penalty,
         presence_penalty: params.presence_penalty,
         stop: params.stop.clone(),
+        suffix: params.suffix.clone(),
+        logprobs: params.logprobs,
+        echo: params.echo,
+        best_of: params.best_of,
+        n: params.n,
+        stream: params.stream,
+        logit_bias: params.logit_bias.clone(),
+        user: params.user.clone(),
     };
 
 
+    let request_string = serde_json::to_string(&request).unwrap();
+    println!("{}", request_string);
     let mut resp = client.post("https://api.openai.com/v1/completions")
         .insert_header(("Content-Type", "application/json"))
         .insert_header(("Authorization", format!("Bearer {}", api_key)))
-        .send_json(&request)
+        .send_body(request_string)
         .await.unwrap();
 
     let result_bytes = resp.body().await.unwrap();
     let result_string = String::from_utf8(result_bytes.to_vec()).unwrap();
+    // println!("{}", result_string);
     let result: Result<Response, serde_json::Error> = serde_json::from_str(&result_string);
     match result {
         Ok(response) => Ok(response),
@@ -39,7 +51,6 @@ pub async fn completions(prompt: &str, params: &Params, api_key: &str) -> std::i
 
 
 pub async fn completions_pretty(prompt: &str, model: &str, max_tokens: u32, api_key: &str) -> String {
-
     let params = Params {
         model: model.to_string(),
         temperature: 0,
@@ -47,10 +58,18 @@ pub async fn completions_pretty(prompt: &str, model: &str, max_tokens: u32, api_
         top_p: 1.0,
         frequency_penalty: 0.0,
         presence_penalty: 0.0,
-        stop: vec!["\"\"\"".to_string()],
+        stop: None,
+        suffix: None,
+        n: 1,
+        stream: false,
+        logprobs: None,
+        echo: false,
+        best_of: 1,
+        logit_bias: HashMap::new(),
+        user: "".to_string(),
     };
 
-    let res = completions(prompt,& params, api_key).await;
+    let res = completions(prompt, &params, api_key).await;
     match res {
         Ok(response) => {
             let mut result = String::new();
@@ -67,7 +86,7 @@ pub async fn completions_pretty(prompt: &str, model: &str, max_tokens: u32, api_
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ErrorResponse {
-    pub error: ErrorResponseObject
+    pub error: ErrorResponseObject,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -86,9 +105,26 @@ pub struct Params {
     pub top_p: f32,
     pub frequency_penalty: f32,
     pub presence_penalty: f32,
-    pub stop: Vec<String>,
+    pub stop: Option<Vec<String>>,
+    pub suffix: Option<String>,
+    pub n: u32,
+    pub stream: bool,
+    pub logprobs: Option<u32>,
+    pub echo: bool,
+    pub best_of: u32,
+    pub logit_bias: HashMap<String, i32>,
+    pub user: String,
 }
 
+fn serialize_option_as_null<S,E:Serialize>(value: &Option<E>, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+{
+    match value {
+        Some(v) => serializer.serialize_some(v),
+        None => serializer.serialize_unit(),
+    }
+}
 
 #[derive(Deserialize, Serialize, Debug)]
 pub struct Response {
@@ -125,16 +161,55 @@ pub struct Request {
     pub top_p: f32,
     pub frequency_penalty: f32,
     pub presence_penalty: f32,
-    pub stop: Vec<String>,
+    #[serde(serialize_with = "serialize_option_as_null")]
+    pub stop: Option<Vec<String>>,
+    #[serde(serialize_with = "serialize_option_as_null")]
+    pub suffix: Option<String>,
+    pub n: u32,
+    pub stream: bool,
+    #[serde(serialize_with = "serialize_option_as_null")]
+    pub logprobs: Option<u32>,
+    pub echo: bool,
+    pub best_of: u32,
+    pub logit_bias: HashMap<String, i32>,
+    pub user: String,
 }
 
-// #[cfg(test)]
-// mod tests {
-//     use super::*;
-//
-//     #[test]
-//     fn it_works() {
-//         let result = add(2, 2);
-//         assert_eq!(result, 4);
-//     }
-// }
+#[cfg(test)]
+mod tests {
+    use std::env;
+    use super::*;
+    use dotenv::dotenv;
+
+    #[actix_rt::test]
+    async fn it_works() {
+        dotenv().ok();
+        let api_key = env::var("OPEN_AI_API_KEY").expect("OPEN_AI_API_KEY must be set");
+
+        let params = Params {
+            model: "text-davinci-003".to_string(),
+            temperature: 0,
+            max_tokens: 5,
+            top_p: 1.0,
+            frequency_penalty: 0.0,
+            presence_penalty: 0.0,
+            stop: None,
+            suffix: None,
+            n: 1,
+            stream: false,
+            logprobs: None,
+            echo: false,
+            best_of: 1,
+            logit_bias: HashMap::new(),
+            user: "".to_string(),
+        };
+
+
+        let result_hard = completions("Is Putin president of Russia? If you ask yes or not. I say:", &params, &api_key).await;
+        println!("result: {}", result_hard.unwrap().choices[0].text);
+        // let model = "text-davinci-003";
+        // let max_tokens:u32 = 3;
+        // let result = completions_pretty("Is Putin president of USA?   If you ask yes or not. I say:", model, max_tokens, &api_key).await;
+        // println!("result: {:?}", result);
+    }
+}
