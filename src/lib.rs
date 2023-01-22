@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::io::Error;
+use std::time::Duration;
 use awc::Client;
 use serde::Deserialize;
 use serde::Serialize;
@@ -31,6 +32,7 @@ pub async fn completions(prompt: &str, params: &CompletionsParams, api_key: &str
     let request_string = serde_json::to_string(&request).unwrap();
     // println!("{}", request_string);
     let mut resp = client.post("https://api.openai.com/v1/completions")
+        .timeout(Duration::from_secs(30))
         .insert_header(("Content-Type", "application/json"))
         .insert_header(("Authorization", format!("Bearer {}", api_key)))
         .send_body(request_string)
@@ -215,6 +217,7 @@ pub async fn edits(input: &str, instruction: &str, params: &EditsParams, api_key
     let request_string = serde_json::to_string(&request).unwrap();
     // println!("{}", request_string);
     let mut resp = client.post("https://api.openai.com/v1/edits")
+        .timeout(Duration::from_secs(30))
         .insert_header(("Content-Type", "application/json"))
         .insert_header(("Authorization", format!("Bearer {}", api_key)))
         .send_body(request_string)
