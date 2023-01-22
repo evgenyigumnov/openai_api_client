@@ -600,7 +600,7 @@ checksum = "6f61fba1741ea2b3d6a1e3178721804bb716a68a6aeba1149b5d52e3d464ea66"
 
 [[package]]
 name = "openai_api_client"
-version = "0.1.4"
+version = "0.2.0"
 dependencies = [
  "actix-rt",
  "awc",
