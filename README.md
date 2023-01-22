@@ -1,3 +1,10 @@
+# About
+
+OpenAI API client for Rust
+
+More information about the OpenAI API:
+https://beta.openai.com/docs/
+
 # Usage
 
 ```rust
