@@ -253,10 +253,6 @@ pub async fn edits_pretty(input: &str, instruction: &str, model: &str, api_key: 
     }
 }
 
-
-
-
-
 #[cfg(test)]
 mod tests {
     use std::env;
