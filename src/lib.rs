@@ -1,12 +1,11 @@
 use std::collections::HashMap;
-use std::io::Error;
 use std::time::Duration;
 use awc::Client;
 use serde::Deserialize;
 use serde::Serialize;
 
 
-pub async fn completions(prompt: &str, params: &CompletionsParams, api_key: &str) -> std::io::Result<CompletionsResponse> {
+pub async fn completions(prompt: &str, params: &CompletionsParams, api_key: &str) -> Result<CompletionsResponse, String> {
     let client = Client::default();
 
     let request: Request = Request {
@@ -29,27 +28,46 @@ pub async fn completions(prompt: &str, params: &CompletionsParams, api_key: &str
     };
 
 
-    let request_string = serde_json::to_string(&request).unwrap();
-    // println!("{}", request_string);
-    let mut resp = client.post("https://api.openai.com/v1/completions")
-        .timeout(Duration::from_secs(30))
-        .insert_header(("Content-Type", "application/json"))
-        .insert_header(("Authorization", format!("Bearer {}", api_key)))
-        .send_body(request_string)
-        .await.unwrap();
+    let request_result = serde_json::to_string(&request);
 
-    let result_bytes = resp.body().await.unwrap();
-    let result_string = String::from_utf8(result_bytes.to_vec()).unwrap();
-    // println!("{}", result_string);
-    let result: Result<CompletionsResponse, serde_json::Error> = serde_json::from_str(&result_string);
-    match result {
-        Ok(response) => Ok(response),
-        Err(_e) => {
-            let result_err: ErrorResponse = serde_json::from_str(&result_string).unwrap();
-            Err(Error::new(std::io::ErrorKind::Other, result_err.error.message))
-        }
+    match request_result {
+        Ok(request_string) => {
+            let resp_result = client.post("https://api.openai.com/v1/completions")
+                .timeout(Duration::from_secs(30))
+                .insert_header(("Content-Type", "application/json"))
+                .insert_header(("Authorization", format!("Bearer {}", api_key)))
+                .send_body(request_string)
+                .await;
+            match resp_result {
+                Ok(mut resp) => {
+                    let bytes_result = resp.body().await;
+                    match bytes_result {
+                        Ok(bytes) => {
+                            let string_result = String::from_utf8(bytes.to_vec());
+                            match string_result {
+                                Ok(string) => {
+                                    let parse_result: Result<CompletionsResponse, serde_json::Error> = serde_json::from_str(&string);
+                                    match parse_result {
+                                        Ok(response) => Ok(response),
+                                        Err(e) => Err(e.to_string()),
+                                    }
+                                },
+                                Err(e) => Err(e.to_string())
+                            }
+                        },
+                        Err(e) => Err(e.to_string())
+                    }
+
+                },
+                Err(e) => Err(e.to_string())
+            }
+        },
+        Err(e) => Err(e.to_string()),
     }
 }
+
+
+
 
 
 pub async fn completions_pretty(prompt: &str, model: &str, max_tokens: u32, api_key: &str) -> String {
@@ -200,7 +218,7 @@ pub struct EditsChoice {
 
 
 
-pub async fn edits(input: &str, instruction: &str, params: &EditsParams, api_key: &str) -> std::io::Result<EditsResponse> {
+pub async fn edits(input: &str, instruction: &str, params: &EditsParams, api_key: &str) -> Result<EditsResponse, String> {
     let client = Client::default();
 
     let request: RequestEdit = RequestEdit {
@@ -214,25 +232,39 @@ pub async fn edits(input: &str, instruction: &str, params: &EditsParams, api_key
     };
 
 
-    let request_string = serde_json::to_string(&request).unwrap();
-    // println!("{}", request_string);
-    let mut resp = client.post("https://api.openai.com/v1/edits")
-        .timeout(Duration::from_secs(30))
-        .insert_header(("Content-Type", "application/json"))
-        .insert_header(("Authorization", format!("Bearer {}", api_key)))
-        .send_body(request_string)
-        .await.unwrap();
-
-    let result_bytes = resp.body().await.unwrap();
-    let result_string = String::from_utf8(result_bytes.to_vec()).unwrap();
-    // println!("{}", result_string);
-    let result: Result<EditsResponse, serde_json::Error> = serde_json::from_str(&result_string);
-    match result {
-        Ok(response) => Ok(response),
-        Err(_e) => {
-            let result_err: ErrorResponse = serde_json::from_str(&result_string).unwrap();
-            Err(Error::new(std::io::ErrorKind::Other, result_err.error.message))
+    let request_string_result = serde_json::to_string(&request);
+    match request_string_result {
+        Ok(request_string) => {
+            let resp_result = client.post("https://api.openai.com/v1/edits")
+                .timeout(Duration::from_secs(30))
+                .insert_header(("Content-Type", "application/json"))
+                .insert_header(("Authorization", format!("Bearer {}", api_key)))
+                .send_body(request_string)
+                .await;
+            match resp_result {
+                Ok(mut resp) => {
+                    let bytes_result = resp.body().await;
+                    match bytes_result   {
+                        Ok(bytes) => {
+                            let string_result = String::from_utf8(bytes.to_vec());
+                            match string_result {
+                                Ok(string) => {
+                                    let parse_result: Result<EditsResponse, serde_json::Error> = serde_json::from_str(string.as_str());
+                                    match parse_result {
+                                        Ok(response) => Ok(response),
+                                        Err(e) => Err(e.to_string())
+                                    }
+                                },
+                                Err(e) =>  Err(e.to_string())
+                            }
+                        },
+                        Err(e) =>  Err(e.to_string())
+                    }
+                },
+                Err(e) =>  Err(e.to_string())
+            }
         }
+        Err(err) =>  Err(err.to_string())
     }
 }
 
