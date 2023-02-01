@@ -1,15 +1,16 @@
-use anyhow::{anyhow, Result};
+use thiserror::Error;
 use awc::Client;
 use serde::Deserialize;
 use serde::Serialize;
 use std::collections::HashMap;
 use std::time::Duration;
 
+
 pub async fn completions(
     prompt: &str,
     params: &CompletionsParams,
     api_key: &str,
-) -> Result<CompletionsResponse> {
+) -> Result<CompletionsResponse, ClientError> {
     let client = Client::default();
 
     let request = Request {
@@ -31,7 +32,8 @@ pub async fn completions(
         user: params.user.clone(),
     };
 
-    let request = serde_json::to_string(&request)?;
+    let request = serde_json::to_string(&request)
+        .map_err(|e| ClientError::OtherError(format!("{:?}",e)))?;
     let response = client
         .post("https://api.openai.com/v1/completions")
         .timeout(Duration::from_secs(30))
@@ -39,19 +41,45 @@ pub async fn completions(
         .insert_header(("Authorization", format!("Bearer {}", api_key)))
         .send_body(request)
         .await
-        .map_err(|e| anyhow!("Failed to send request: {e:?}"))?
+        .map_err(|e| ClientError::NetworkError(format!("{:?}",e)))?
         .body()
-        .await?;
-    let response = std::str::from_utf8(response.as_ref())?;
-    Ok(serde_json::from_str(response)?)
+        .await
+        .map_err(|e| ClientError::NetworkError(format!("{:?}",e)))?;
+    let response_str = std::str::from_utf8(response.as_ref())
+        .map_err(|e| ClientError::OtherError(format!("{:?}",e)))?;
+    
+    let completions_response: CompletionsResponse = match serde_json::from_str(response_str) {
+        Ok(response) => response,
+        Err(e1) => {
+            let error_response: ErrorResponse = match serde_json::from_str(response_str) {
+                Ok(response) => response,
+                Err(e2) => {
+                    return Err(ClientError::OtherError(format!("{:?} {:?}",e2, e1)));
+                }
+            };
+            return Err(ClientError::APIError(error_response.error.message));
+        }
+    };
+    Ok(completions_response)
+
 }
 
-pub async fn completions_pretty(
+#[derive(Debug, Error)]
+pub enum ClientError {
+    #[error("OpenAI API error: `{0}`")]
+    APIError(String),
+    #[error("Network error: `{0}`")]
+    NetworkError(String),
+    #[error("Other error: `{0}`")]
+    OtherError(String),
+}
+
+pub async fn completions_pretty (
     prompt: &str,
     model: &str,
     max_tokens: u32,
     api_key: &str,
-) -> String {
+) -> Result<String, ClientError> {
     let params = CompletionsParams {
         model: model.to_string(),
         temperature: 0,
@@ -70,12 +98,11 @@ pub async fn completions_pretty(
         user: None,
     };
 
-    let res = completions(prompt, &params, api_key).await;
-    match res {
-        Ok(response) => response.choices[0].text.clone(),
-        Err(e) => e.to_string(),
-    }
+    let res = completions(prompt, &params, api_key).await?;
+    Ok(res.choices[0].text.clone())
 }
+
+
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ErrorResponse {
@@ -196,7 +223,7 @@ pub async fn edits(
     instruction: &str,
     params: &EditsParams,
     api_key: &str,
-) -> Result<EditsResponse, String> {
+) -> Result<EditsResponse, ClientError> {
     let client = Client::default();
 
     let request: RequestEdit = RequestEdit {
@@ -230,23 +257,30 @@ pub async fn edits(
                                         serde_json::from_str(string.as_str());
                                     match parse_result {
                                         Ok(response) => Ok(response),
-                                        Err(e) => Err(e.to_string()),
+                                        Err(e1) => {
+                                            let error_result: Result<ErrorResponse, serde_json::Error> =
+                                                serde_json::from_str(string.as_str());
+                                            match error_result {
+                                                Ok(error) => Err(ClientError::APIError(error.error.message)),
+                                                Err(e2) => Err(ClientError::OtherError(format!("{:?} {:?}",e2, e1))),
+                                            }
+                                        },
                                     }
                                 }
-                                Err(e) => Err(e.to_string()),
+                                Err(e) => Err(ClientError::OtherError(format!("{:?}",e))),
                             }
                         }
-                        Err(e) => Err(e.to_string()),
+                        Err(e) => Err(ClientError::NetworkError(format!("{:?}",e))),
                     }
                 }
-                Err(e) => Err(e.to_string()),
+                Err(e) => Err(ClientError::OtherError(format!("{:?}",e))),
             }
         }
-        Err(err) => Err(err.to_string()),
+        Err(e) => Err(ClientError::OtherError(format!("{:?}",e))),
     }
 }
 
-pub async fn edits_pretty(input: &str, instruction: &str, model: &str, api_key: &str) -> String {
+pub async fn edits_pretty(input: &str, instruction: &str, model: &str, api_key: &str) -> Result<String, ClientError> {
     let params = EditsParams {
         model: model.to_string(),
         temperature: 0,
@@ -254,12 +288,10 @@ pub async fn edits_pretty(input: &str, instruction: &str, model: &str, api_key: 
         n: 1,
     };
 
-    let res = edits(input, instruction, &params, api_key).await;
-    match res {
-        Ok(response) => response.choices[0].text.clone(),
-        Err(e) => e.to_string(),
-    }
+    let res = edits(input, instruction, &params, api_key).await?;
+    Ok(res.choices[0].text.clone())
 }
+
 
 #[cfg(test)]
 mod tests {
@@ -279,8 +311,7 @@ mod tests {
             model,
             max_tokens,
             &api_key,
-        )
-        .await;
+        ).await.unwrap();
         println!("result: {}", result);
 
         let result_edits: String = edits_pretty(
@@ -289,7 +320,7 @@ mod tests {
             "text-davinci-edit-001",
             &api_key,
         )
-        .await;
+        .await.unwrap();
         println!("result: {}", result_edits);
     }
 }

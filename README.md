@@ -22,7 +22,7 @@ async fn main() {
     let max_tokens:u32 = 3;
     let prompt = "Is Biden president of USA?  If you ask yes or not. \
      I say:";
-    let result: String = completions_pretty(prompt, model, max_tokens, &api_key).await;
+    let result: String = completions_pretty(prompt, model, max_tokens, &api_key).await.unwrap();
     println!("result: {}", result);
     
     // hardcore usage
@@ -45,8 +45,8 @@ async fn main() {
     };
     let new_promt = "Is Biden president of Canada?  If you ask yes or \
      not. I say:";
-    let result_hard = completions(new_promt, &params, &api_key).await;
-    println!("result: {}", result_hard.unwrap().choices[0].text);
+    let result_hard = dbg!(completions(new_promt, &params, &api_key).await.unwrap());
+    println!("result: {}", result_hard.choices[0].text);
 
 }
 
@@ -64,7 +64,7 @@ async fn main() {
     // pretty usage
     let api_key = "............";
     let result_edits:String  = edits_pretty("Helllo, Mick!", "Fix grammar", 
-                                            "text-davinci-edit-001", &api_key).await;
+                                            "text-davinci-edit-001", &api_key).await.unwrap();
     println!("result: {}", result_edits);
 
 
